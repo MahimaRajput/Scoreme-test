@@ -61,6 +61,10 @@ pipeline {
             steps{
                 dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'owasp'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                dependencyCheck failBuildOnCVSS: '7',   
+                    healthy: '50',            
+                    type: 'MAVEN',             
+                    scanPath: '.'     
                
            } 
         }
