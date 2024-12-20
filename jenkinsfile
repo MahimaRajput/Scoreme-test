@@ -1,10 +1,12 @@
 pipeline {
     agent any
+
     environment {
         // Replace 'SonarQubeServer' with the name of your SonarQube server configured in Jenkins
         SONAR_HOME = tool 'sonar-scanner' 
         MAVEN_HOME = tool 'maven'
         LIZARD_PATH = '/home/ubuntu/lizard-env/bin/lizard'
+        containerName = 'java_app'
     }
 
     stages {
@@ -17,7 +19,11 @@ pipeline {
         stage('Build and Test') {
             steps {
                 // Run Maven build and tests
+                sh "'${MAVEN_HOME}/bin/mvn' clean package"
+                sh 'mkdir -p pkg'
+                sh 'mv target/demo.war pkg/demo.war'    
                 sh "'${MAVEN_HOME}/bin/mvn' clean test"
+
             }
         }
         stage('JaCoCo coverage report') {
@@ -49,7 +55,7 @@ pipeline {
                 }
             }
         }
-        stage('Lizard Test') {
+        stage('Run Lizard') {
             steps {
                 script {
                     // Run Lizard to analyze code complexity
@@ -57,16 +63,26 @@ pipeline {
                 }
             }
         }
-        stage("OWASP Dependency Check"){
+        stage('Docker Build & Push') 
+		{
+			steps 
+			{
+			    script
+			    {
+                  withDockerRegistry([url: 'https://index.docker.io/v1/', credentialsId: 'Docker_id']){
+                        sh "docker build -t mahimarajput26/scorerepo:${BUILD_NUMBER} ."
+				        sh "docker build -t mahimarajput26/scorerepo:latest ."
+					    sh "docker push mahimarajput26/scorerepo:${BUILD_NUMBER}"
+					    sh "docker push mahimarajput26/scorerepo:latest"	
+					}
+			    }
+			}
+		}
+		stage('Deploy to container'){
             steps{
-                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'owasp'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                dependencyCheck failBuildOnCVSS: '7',   
-                    healthy: '50',            
-                    type: 'MAVEN',             
-                    scanPath: '.'     
-               
-           } 
+                sh "docker ps -q -f name=${containerName} | grep -q . && docker stop ${containerName} && docker rm ${containerName} || true"
+                sh 'docker run -d --name java_app -p 8000:8000  mahimarajput26/scorerepo:latest '
+            }
         }
     }
     
