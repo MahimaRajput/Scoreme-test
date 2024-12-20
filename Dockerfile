@@ -1,6 +1,4 @@
 FROM tomcat:8.5
-MAINTAINER Tung Nguyen <tongueroo@gmail.com>
-
 # Debugging tools: A few ways to handle debugging tools.
 # Trade off is a slightly more complex volume mount vs keeping the image size down.
 RUN apt-get update && \
